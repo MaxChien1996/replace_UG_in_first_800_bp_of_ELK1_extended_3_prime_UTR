@@ -2,7 +2,7 @@ library(tidyverse)
 
 
 
-full_library_splice_site_probabilities <- read_csv("/Users/maxchien/Downloads/ELK1 new UG replace/full_library_splice_site_probabilities.csv.gz")
+full_library_splice_site_probabilities <- read_csv("~/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/3_/full_library_splice_site_probabilities.csv.gz")
 # acceptor_prob: the probability of the splicing acceptor
 # donor_prob: the probability of the splicing donor
 # nt_pos: the position of the nucleotide in the sequence; position number 0 is the first nucleotide of the sequence
