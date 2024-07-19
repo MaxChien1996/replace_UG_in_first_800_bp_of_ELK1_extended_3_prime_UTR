@@ -14,6 +14,9 @@ linker_6_7_two = "AAACAATAGTAGGGACTGCATATCGGTA"
 
 
 
+
+
+# create a data frame including the sequences with UG removed in the upstream ELK1 3'-UTR
 df_with_UG_removed_upstream_ELK1_3_prime_UTR <- selected_sequences %>% 
   mutate(oPools_1_with_UG_removed_upstream_ELK1_3_prime_UTR = str_replace(oPools_1_sequence, upstream_ELK1_3_prime_UTR, UG_removed_upstream_ELK1_3_prime_UTR)) %>% 
   select(-oPools_1_sequence) %>% 
@@ -38,6 +41,7 @@ extra_UG_whole_sequence <- paste0(str_remove(extra_UG_oPools_1, linker_6_7_two),
 # create the whole data frame
 df_all <- bind_rows(selected_sequences, df_with_UG_removed_upstream_ELK1_3_prime_UTR) %>% 
   mutate(remove_UG_in_upstream_ELK1_3_prime_UTR = ifelse(is.na(remove_UG_in_upstream_ELK1_3_prime_UTR), FALSE, remove_UG_in_upstream_ELK1_3_prime_UTR)) %>% 
+  # add the extra UG sequence
   rbind(list(portion = "200%", 
             replicate = "", 
             portions = "", 
@@ -50,17 +54,18 @@ df_all <- bind_rows(selected_sequences, df_with_UG_removed_upstream_ELK1_3_prime
 
 
 
-ELK1_oPools_1 <- df_all %>% 
+# write a CSV file for ordering the oPools
+ELK1_3_prime_UTR_oPools_1 <- df_all %>% 
   select(-sequence, -oPools_2_sequence) %>% 
   dplyr::rename(Sequence = oPools_1_sequence) %>% 
   mutate(`Pool name` = "ELK1_oPools_1") %>% 
   select(`Pool name`, Sequence, everything())
 
-ELK1_oPools_2 <- df_all %>% 
+ELK1_3_prime_UTR_oPools_2 <- df_all %>% 
   select(-sequence, -oPools_1_sequence) %>% 
   dplyr::rename(Sequence = oPools_2_sequence) %>% 
   mutate(`Pool name` = "ELK1_oPools_2") %>% 
   select(`Pool name`, Sequence, everything())
 
-write_csv(ELK1_oPools_1, "ELK1_oPools_1.csv")
-write_csv(ELK1_oPools_2, "ELK1_oPools_2.csv")
+write_csv(ELK1_3_prime_UTR_oPools_1, "ELK1_oPools_1.csv")
+write_csv(ELK1_3_prime_UTR_oPools_2, "ELK1_oPools_2.csv")
