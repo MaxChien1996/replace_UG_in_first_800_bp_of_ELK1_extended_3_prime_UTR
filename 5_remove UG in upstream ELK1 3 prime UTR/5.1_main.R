@@ -2,70 +2,65 @@ library(tidyverse)
 
 
 
-selected_sequences <- read_csv("../4_pick sequences/selected_sequences.csv")
+# oPools_1 only contains upstream ELK1 3'-UTR
 
-upstream_ELK1_3_prime_UTR <- "CAAAAGACTCCTGGGCTCACCTGTTAGCGCTGGCCCAGCCCAGGCCTTGGGACCTGGGGGTTGGTGATTTGGGGGACAGTGCTACACTCGTCTCCACTGTTTGTTTTACTTCCCCAAAATGGACCTTTTTTTTTTCTAAAGAGTCCCAGAGAATGGGGAATTGTTCCTGTAAATATATATTTTTCAAAGTGA"
+# wild type upstream ELK1 3'-UTR is the oPools_1 in the "../1_generate candidate sequences/oPool_regions.py"
+wild_type <- "CAAAAGACTCCTGGGCTCACCTGTTAGCGCTGGCCCAGCCCAGGCCTTGGGACCTGGGGGTTGGTGATTTGGGGGACAGTGCTACACTCGTCTCCACTGTTTGTTTTACTTCCCCAAAATGGACCTTTTTTTTTTCTAAAGAGTCCCAGAGAATGGGGAATTGTTCCTGTAAATATATATTTTTCAAAGTGA"
 
 # sequence from "../1_generate candidate sequences/1.2_UG_removed_upstream_ELK1_3_prime_UTR.ipynb"
-UG_removed_upstream_ELK1_3_prime_UTR <- "CAAAAGACTCCTGGGCTCACCTGTTAGCGCCAGCCCAGCCCAGGCCTCCGGACCCAGGGGTAAGCAATTCAGGGGACAGCCCTACACTCGTCTCCACTATTACTTTTACTTCCCCAAAAGCGACCTTTTTTTTTTCTAAAGAGTCCCAGAGAAACGGGAATAATTCCCATAAATATATATTTTTCAAAGCAA"
+UG_removed <- "CAAAAGACTCCTGGGCTCACCTGTTAGCGCACGCCCAGCCCAGGCCTAGGGACCAAGGGGTACGCAATTCGGGGGACAGCTCTACACTCGTCTCCACACTTTTTTTTACTTCCCCAAAAGCGACCTTTTTTTTTTCTAAAGAGTCCCAGAGAATCGGGAATTCTTCCTGTAAATATATATTTTTCAAAGTGA"
 
-# the overlapping region between oPools_1 and oPools_2 is "linker_6_7_two"
-linker_6_7_two = "AAACAATAGTAGGGACTGCATATCGGTA"
-
-
-
-
-
-# create a data frame including the sequences with UG removed in the upstream ELK1 3'-UTR
-df_with_UG_removed_upstream_ELK1_3_prime_UTR <- selected_sequences %>% 
-  mutate(oPools_1_with_UG_removed_upstream_ELK1_3_prime_UTR = str_replace(oPools_1_sequence, upstream_ELK1_3_prime_UTR, UG_removed_upstream_ELK1_3_prime_UTR)) %>% 
-  select(-oPools_1_sequence) %>% 
-  mutate(sequence = paste0(str_remove(oPools_1_with_UG_removed_upstream_ELK1_3_prime_UTR, linker_6_7_two), oPools_2_sequence)) %>%
-  select(portion, replicate, portions, sequence, oPools_1_with_UG_removed_upstream_ELK1_3_prime_UTR, everything()) %>% 
-  dplyr::rename(oPools_1_sequence = oPools_1_with_UG_removed_upstream_ELK1_3_prime_UTR) %>% 
-  mutate(remove_UG_in_upstream_ELK1_3_prime_UTR = TRUE)
+oPools_1 <- data_frame(
+  name = "ELK1_oPools_1",
+  sequence = c(wild_type, UG_removed)
+)
 
 
 
 
 
-# sequences of manually add UG in truncated extended 3'-UTR
-extra_UG_oPools_1 <- "CAAAAGACTCCTGGGCTCACCTGTTAGCGCTGGCCCAGCCCAGGCCTTGGGACCTGGGGGTTGGTGATTTGGGGGACAGTGCTACACTCGTCTCCACTGTTTGTTTTACTTCCCCAAAATGGACCTTTTTTTTTTCTAAAGAGTCCCAGAGAATGGGGAATTGTTCCTGTAAATATATATTTTTCAAAGTGATGCTGTGGGCTGCTGGTGTGTTTTGTGTGATGTTGTGTGTGTGTGCTGTGCGTGGCTGGCATGTGTGTGTGTGTGGGGTGTGTGGCTGTGTGCTGTTGTGTGTGAATGGGTGTGATGGCGTGTGTGTGAAACAATAGTAGGGACTGCATATCGGTA"
-extra_UG_oPools_2 <- "AAACAATAGTAGGGACTGCATATCGGTATGTGTGTGTGTGTGTGTGTGGTGTGATGCTGTGATTGTGTGTGTGTGTGTGTGTGTGTTGTGTGTGTGTGTGTTTGATGGTGTGTGTATGTGGTGAATTGTGGCTGTGTTTGTGAAAATAACTGTGCCTGTGTGAATTGTGATGTGTGTGTTGAATGTGCTGTGATGTGATGTGTGAAATAATGTGTACGAGAAGGGAACGGGGACTGCAGCCCT"
-extra_UG_whole_sequence <- paste0(str_remove(extra_UG_oPools_1, linker_6_7_two), extra_UG_oPools_2)
+# extra UG version from:
+# ~OneDrive-UniversityCollegeLondon/Lab note
+# /PhD/2024.06.17_Put a 15-mer barcode right after mGreenLantern and start removing UG in ELK1 extended 3 prime-UTR
+# /manually add more UG.dna
+extra_UG_oPools_2 <- "TCCTGTAAATATATATTTTTCAAAGTGATGCTGTGGGCTGCTGGTGTGTTTTGTGTGATGTTGTGTGTGTGTGCTGTGCGTGGCTGGCATGTGTGTGTGTGTGGGGTGTGTGGCTGTGTGCTGTTGTGTGTGAATGGGTGTGATGGCGTGTGTGTGAAACAATAGTAGGGACTGCATATCGGTA"
+extra_UG_oPools_3 <- "AAACAATAGTAGGGACTGCATATCGGTATGTGTGTGTGTGTGTGTGTGGTGTGATGCTGTGATTGTGTGTGTGTGTGTGTGTGTGTTGTGTGTGTGTGTGTTTGATGGTGTGTGTATGTGGTGAATTGTGGCTGTGTTTGTGAAAATAACTGTGCCTGTGTGAATTGTGATGTGTGTGTTGAATGTGCTGTGATGTGATGTGTGAAATAATGTGTACGAGAAGGGAACGGGGACTGCAGCCCT"
 
+Gibson_assembly_overlapping_oPools_1_2 = "TCCTGTAAATATATATTTTTCAAAGTGA"
+Gibson_assembly_overlapping_oPools_2_3 = "AAACAATAGTAGGGACTGCATATCGGTA"
 
+extra_UG_whole_sequence <- paste0(str_remove(wild_type, Gibson_assembly_overlapping_oPools_1_2), 
+                                  str_remove(extra_UG_oPools_2, Gibson_assembly_overlapping_oPools_2_3), 
+                                  extra_UG_oPools_3)
 
-
-
-# create the whole data frame
-df_all <- bind_rows(selected_sequences, df_with_UG_removed_upstream_ELK1_3_prime_UTR) %>% 
-  mutate(remove_UG_in_upstream_ELK1_3_prime_UTR = ifelse(is.na(remove_UG_in_upstream_ELK1_3_prime_UTR), FALSE, remove_UG_in_upstream_ELK1_3_prime_UTR)) %>% 
+selected_sequences <- read_csv("../4_pick sequences/selected_sequences.csv") %>% 
   # add the extra UG sequence
   rbind(list(portion = "200%", 
-            replicate = "", 
-            portions = "", 
-            sequence = extra_UG_whole_sequence, 
-            oPools_1_sequence = extra_UG_oPools_1, 
-            oPools_2_sequence = extra_UG_oPools_2, 
-            remove_UG_in_upstream_ELK1_3_prime_UTR = FALSE))
+             replicate = "", 
+             portions = "", 
+             sequence = extra_UG_whole_sequence, 
+             oPools_2_sequence = extra_UG_oPools_2, 
+             oPools_3_sequence = extra_UG_oPools_3))
+
+
+
+
+
+oPools_2 <- selected_sequences %>% 
+  mutate(`Pool name` = "ELK1_oPools_2") %>% 
+  select(`Pool name`, oPools_2_sequence) %>% 
+  unique()
+
+oPools_3 <- selected_sequences %>% 
+  mutate(`Pool name` = "ELK1_oPools_3") %>% 
+  select(`Pool name`, oPools_3_sequence) %>% 
+  unique()
 
 
 
 
 
 # write a CSV file for ordering the oPools
-ELK1_3_prime_UTR_oPools_1 <- df_all %>% 
-  select(-sequence, -oPools_2_sequence) %>% 
-  dplyr::rename(Sequence = oPools_1_sequence) %>% 
-  mutate(`Pool name` = "ELK1_oPools_1") %>% 
-  select(`Pool name`, Sequence, everything())
-
-ELK1_3_prime_UTR_oPools_2 <- df_all %>% 
-  select(-sequence, -oPools_1_sequence) %>% 
-  dplyr::rename(Sequence = oPools_2_sequence) %>% 
-  mutate(`Pool name` = "ELK1_oPools_2") %>% 
-  select(`Pool name`, Sequence, everything())
-
-write_csv(ELK1_3_prime_UTR_oPools_1, "ELK1_oPools_1.csv")
-write_csv(ELK1_3_prime_UTR_oPools_2, "ELK1_oPools_2.csv")
+write_csv(oPools_1, "ELK1_oPools_1.csv")
+write_csv(oPools_2, "ELK1_oPools_2.csv")
+write_csv(oPools_3, "ELK1_oPools_3.csv")
