@@ -11,8 +11,9 @@ wild_type <- "CAAAAGACTCCTGGGCTCACCTGTTAGCGCTGGCCCAGCCCAGGCCTTGGGACCTGGGGGTTGGTG
 UG_removed <- "CAAAAGACTCCTGGGCTCACCTGTTAGCGCACGCCCAGCCCAGGCCTAGGGACCAAGGGGTACGCAATTCGGGGGACAGCTCTACACTCGTCTCCACACTTTTTTTTACTTCCCCAAAAGCGACCTTTTTTTTTTCTAAAGAGTCCCAGAGAATCGGGAATTCTTCCTGTAAATATATATTTTTCAAAGTGA"
 
 oPools_1 <- data_frame(
-  name = "ELK1_oPools_1",
-  sequence = c(wild_type, UG_removed)
+  `Pool name` = "ELK1_oPools_1", 
+  oPools_1_sequence = c(wild_type, UG_removed), 
+  sequence_name = c("wild_type", "UG_removed")
 )
 
 
@@ -48,12 +49,19 @@ selected_sequences <- read_csv("../4_pick sequences/selected_sequences.csv") %>%
 
 oPools_2 <- selected_sequences %>% 
   mutate(`Pool name` = "ELK1_oPools_2") %>% 
-  select(`Pool name`, oPools_2_sequence) %>% 
+  mutate(sequence_name = paste0(portion, "_", replicate)) %>% 
+  mutate(sequence_name = ifelse(sequence_name == "200%_", "200%_#1", sequence_name)) %>%
+  select(`Pool name`, oPools_2_sequence, sequence_name) %>% 
   unique()
 
 oPools_3 <- selected_sequences %>% 
   mutate(`Pool name` = "ELK1_oPools_3") %>% 
-  select(`Pool name`, oPools_3_sequence) %>% 
+  mutate(sequence_name = paste0(portion, "_", replicate)) %>% 
+  mutate(sequence_name = ifelse(sequence_name == "200%_", "200%_#1", sequence_name)) %>% 
+  # because 10%___#1 is the same as 25%___#1
+  mutate(sequence_name = ifelse(sequence_name == "10%_#1", "10%_25%_#1", sequence_name)) %>% 
+  mutate(sequence_name = ifelse(sequence_name == "25%_#1", "10%_25%_#1", sequence_name)) %>%
+  select(`Pool name`, oPools_3_sequence, sequence_name) %>% 
   unique()
 
 
