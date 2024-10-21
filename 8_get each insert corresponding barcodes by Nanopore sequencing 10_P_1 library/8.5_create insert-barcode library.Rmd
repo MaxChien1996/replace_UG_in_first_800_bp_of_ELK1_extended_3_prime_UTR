@@ -1,0 +1,183 @@
+---
+title: "create insert-barcode library"
+output: html_document
+date: "2024-09-20"
+---
+
+```{r libraries}
+library(tidyverse)
+library(Rsamtools)
+```
+
+### Functions for determining whether a read contains Indels
+
+(these functions are wrote by Oscar Wilkins)
+
+```{r functions}
+split_cigar <- function(cigar_string) {
+  
+  lengths <- as.numeric(str_extract_all(cigar_string, "\\d+")[[1]])
+  operations <- str_extract_all(cigar_string, "[A-Z]")[[1]]
+  
+  
+  
+  return(list(lengths = lengths, operations = operations))
+  
+}
+
+contains_Indels <- function(cigar_string){
+  
+  cig_list <- split_cigar(cigar_string)
+  cig_df <- data.frame(cig_list) %>%
+    filter(operations %in% c('N', 'D', 'I')) %>%
+    filter(lengths > 10)
+  
+  
+  
+  if(nrow(cig_df) > 0){
+    
+    return(T)
+    
+  } else {
+    
+    return(F)
+    
+  }
+}
+
+
+example_string <- "9M11D61M1D98M"
+
+split_cigar(example_string)
+print("----------")
+contains_Indels(example_string)
+```
+
+### Read in the BAM file
+
+```{r read file}
+BAM_file_path <- "/Volumes/lab-frattap/home/users/jeanz/Nanopore_sequencing/079_barcode_quality_check_before_we_go/aligned_BAM.sorted.bam"
+
+df_1 <- data.frame(scanBam(BAM_file_path))
+```
+
+Oscar suggested that we should remove the reads that contain Indels
+
+```{r analysis}
+df_2 <- df_1 %>% 
+  filter(mapq > 0) %>% # mapq stands for mapping quality score
+  filter(flag < 256) %>% # if flag >= 256, it means "not primary alignment"
+  filter(flag != 4) %>%  # if flag is 4, it means "read unmapped"
+  filter(pos < 800)
+
+ggplot(df_2, aes(x = qwidth)) +
+  geom_histogram() + 
+  scale_x_continuous(limits = c (2600, 3250), breaks = seq(2600, 3250, 50)) + 
+  ylim(0, 10500)
+
+
+
+df_2$contains_Indels <- mapply(contains_Indels, df_2$cigar)
+df_2_remove_Indels <- df_2 %>% 
+  filter(!contains_Indels)
+
+ggplot(df_2_remove_Indels, aes(x = qwidth)) +
+  geom_histogram() + 
+  scale_x_continuous(limits = c (2600, 3250), breaks = seq(2600, 3250, 50)) + 
+  ylim(0, 10500)
+```
+
+This removed many reads its length between 2800 \~ 2875 bp
+
+```{r}
+df_3 <- df_2_remove_Indels %>% 
+  filter(qwidth < 3200) %>% 
+  filter(qwidth > 2850)
+
+df_4 <- df_3 %>%
+  group_by(rname) %>% 
+  mutate(n = n()) %>%
+  ungroup() %>% 
+  select(rname, n) %>% 
+  unique() %>% 
+  arrange(desc(n))
+```
+
+-   After checking df_4:
+
+    -   Most of potential combination of inserts got at least 10 reads
+
+    -   However, the original plasmid backbone (wild_type---0%#1---0%#1) still contaminate around 24% of reads
+
+    -   Overall, this library is good enough for transfection
+
+### Read query_name-barcode pairing table in
+
+```{r read file}
+barcodes <- read_csv("/Users/jeanz/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/8_get each insert corresponding barcodes by Nanopore sequencing 10_P_1 library/barcodes.csv.gz") %>% 
+  dplyr::rename(qname = query_name) %>% 
+  filter(!is.na(barcode))
+```
+
+### Analyse
+
+```{r}
+whole_thing <- df_3 %>% 
+  select(qname, rname) %>% 
+  unique() %>% 
+  left_join(barcodes) %>% 
+  filter(!is.na(barcode)) %>% 
+  
+  select(-qname) %>% 
+  group_by(rname, barcode) %>% 
+  mutate(read_counts = n()) %>% 
+  ungroup() %>% 
+  
+  select(-qualities) %>% 
+  unique()
+```
+
+Checking whether each barcode is aligned to more than one inserts
+
+```{r quality check}
+whole_thing <- whole_thing %>% 
+  group_by(barcode) %>% 
+  mutate(n = n()) %>% 
+  ungroup()
+
+n_more_than_2 <- whole_thing %>% 
+  filter(n > 2) %>% 
+  group_by(barcode) %>% 
+  mutate(max = max(read_counts)) %>% 
+  mutate(the_others = sum(read_counts) - max) %>% 
+  filter(max > the_others + 2) %>% 
+  filter(read_counts == max) %>% 
+  select(-n, -max, -the_others)
+
+n_equal_2 <- whole_thing %>% 
+  filter(n == 2) %>% 
+  group_by(barcode) %>% 
+  mutate(max = max(read_counts)) %>% 
+  mutate(min = min(read_counts)) %>% 
+  filter(max >= min + 2) %>% 
+  filter(read_counts == max) %>% 
+  select(-n, -max, -min)
+
+n_equal_1 <- whole_thing %>% 
+  filter(n == 1) %>% 
+  select(-n)
+```
+
+It seems like some barcodes are corresponding to more than one inserts. Good new is the amount of this kind of barcode are very low, so let's get rid of it.
+
+```{r}
+final <- bind_rows(n_more_than_2, n_equal_2, n_equal_1)
+```
+
+Now I get a table shows corresponding barcodes of each insert, and how many reads of each barcode
+
+### Export
+
+```{r export as CSV file}
+write_csv(final, "~/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/8_get each insert corresponding barcodes by Nanopore sequencing 10_P_1 library/barcode_insert_library.csv.gz")
+```

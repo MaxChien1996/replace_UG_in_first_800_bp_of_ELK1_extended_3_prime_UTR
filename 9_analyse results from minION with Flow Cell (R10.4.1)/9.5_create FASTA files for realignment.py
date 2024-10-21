@@ -1,0 +1,39 @@
+# use conda enviroment "general" to run this script
+
+import dnaio
+import os
+
+
+
+potential_combination_of_inserts = '../6_potential combination after Gibson assembly/potential_combination_of_inserts.fasta'
+
+dict = {}
+
+# read the FASTA file in and store the sequences in a dictionary
+with dnaio.open(potential_combination_of_inserts) as FASTA_file:
+    
+    for read in FASTA_file:
+        
+        name = read.name
+        sequence = read.sequence
+        
+        dict[name] = sequence
+
+
+
+# create new FASTA files, and each file contains only one sequence
+directory_path = '/Users/jeanz/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/9_analyse results from minION with Flow Cell (R10.4.1)/FASTA_files_for_realignment/'
+os.makedirs(directory_path, exist_ok=True)  # exist_ok=True will prevent errors if the directory already exists
+
+for name, sequence in dict.items():
+    
+    filename = directory_path + name + '.fasta'
+    
+    upstream_sequence = 'atggtgagcaagggcgaggagctgttcaccggggtggtgcccatcctggtcgagctggacggcgacgtaaacggccacaagttcagcgtccgcggcgagggcgagggcgatgccaccaacggcaagctgaccctgaagttcatctgcaccaccggcaagctgcccgtgccctggcccaccctcgtgaccaccttaggctacggcgtggcctgcttcgcccgctaccccgaccacatgaagcagcacgacttcttcaagtccgccatgcccgaaggctacgtccaggagcgcaccatctctttcaaggacgacggtacctacaagacccgcgccgaggtgaagttcgagggcgacaccctggtgaaccgcatcgtgctgaagggcatcgacttcaaggaggacggcaacatcctggggcacaagctggagtacaacttcaacagccacaaggtctatatcacggccgacaagcagaagaacggcatcaaggctaacttcaagacccgccacaacgttgaggacggcggcgtgcagctcgccgaccactaccagcagaacacccccatcggcgacggccccgtgctgctgcccgacaaccactacctgagccatcagtccaaactgagcaaagaccccaacgagaagcgcgatcacatggtcctgaaggagagggtgaccgccgccgggattacacatgacatggatgaactatataaataaGCCCNNNNNNNNNNNNNNNGGGCCTACTACCACCACCACCACCACCCCTTCTGGGGTCACTCCATCCATGCTCTCTCCAGCCAGCCATCTCAAGGAGAAACATAGTTCAACTGAAAGACTCATGCTCTGATTGTGGTGGGGTGGGGATCCTTGGGAAGAATTACTCCCAAGAGTAACTCTCATTATCTCCTCCACAGAAAACACACAGCTTCCACAACTTCTCTGTTTTCTGTCAGTCCCCCAGTGGCCGCCCTTACACGTCTCCTACTTCAATGGTAGGGGCGGTTTATTTATTTATTTTTTGAAGGCCACTGGGAGGAGCCTGACCTAACCTTTTAGGGTGGTTAGGACATCTCCCCCACCTCCCCACTTTTTTCCCCAAGACAAGACAATCGAGGTCTGGCTTGAGAACGACCTTTCTTTCTTTATTTCTCAGCCTGCCCTTGGGGAGATGAGGGAGCCCTGTCTGCGTTTTTGGATGTGAGTAGAAGAGTTAGTTTGTTTTGTTTTATTATTCCTGGCCATACTCAGGGGTCCAGGAAGAATTTGTACCATTTAATGGGTTGGGAGTCTTGGCCAAGGAAGAATCACACCCTTGGAATAGAAATTTCCACCTCCCCAACCTTTCTCTCAGACAGCTTATCCTTTTCAACCAACTTTTTGGCCAGGGAGGAATGTCCCTTTTGTTCTTCCCCCTGAGAAGCCATTCCTTTGTCTGCCAACCTCCCTGGGGTCCTGCCTGTTTCCTCCCAATGGAGGGTTTTTTTGGGGGGTGGTCCCCGTCTGGGGGGCCCCTCCAGCCAGTACTCCAGGTCTCCCTGTCTCTCCCCCGCTGCCATTTTGATAGTATAATCTATTTTTAAATGGGGCTTTTCAATAGGGGAGAGGGAGTCATCTCTTCCTATATTTGGTGGGGTGGGTGGGAAGGAAGGGATTTGGGGGGGAATCTTCCTGCCGCCTCCCCCACTCCAAGTGTTTATTTTTGATACCAAACATGAATTTTCAGTTCCCTCCCTCCCAGCCCCCCAATTTCCTGCGGGCGGGTACAAAGGACCCTTTCAATGTCCCTGGAGTTGGGAGGGAGGAATGGGGGACATAAAGCCTGTCCTGTCTCTATTCTAGGCAAGAGAGAGTGGGTT'
+    downstream_sequence = 'GTCACTGTTTGATGGCGAGCAAGACAGACTGGGTGACCAAAACCACATGTGAGAGACTACGTGGGCATGAAACTACAGTAGAGGTTGTCAGGGATTGTGGCAAAGATTGTGTAGGTGACAAACCTCACTGTAGGCGACTCAACGTTTGAGAAATAGATGATGTGCAAAACTGTTTACTTGAGGCTGTAGTGTCAGCTAAAGCTGTAAGACTGTATGGGTGCGAACTTGATTGTACGGGAGAGAATGGCTGGGAGACCAAACCAGTGACCGAGACCAAAGATACAAGAAGGTGCAATTGTGTGTACGAAAGCAGGCGTGAGAGACTGCAGCAAAGACTGAGAAAAACGAATGGCTGTGACTGGGAGAGTGTGACAGGCTGTGTGTGTGTGTGTGTACACCTGAAACTAGTTGCAAATCGATTTACCATTAaactggatccgcaggcctctgctagcttgactgactgagatacagcgtaccttcagctcacgcggccgctttctccgcgatccagacatgataagatacattgatgagtttggacaaaccaaaactagaatgcagtgaaaaaaatgccttatttgtgaaatttgtgatgctattgccttatttgtaaccattataagctgcaataaacaagttatctataacaagaaaatatatatataataagttatcacgtaagtagaacatgaaataacaatataattatcgtatgagttaaatcttaaaagtcacgtaa'
+        
+    whole_reference_sequence = upstream_sequence + sequence + downstream_sequence
+    
+    with open(filename, 'w') as FASTA_file:
+        
+        FASTA_file.write('>' + name + '\n' + whole_reference_sequence + '\n')
