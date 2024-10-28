@@ -194,3 +194,38 @@ ggplot(df_4, aes(x = factor(oPools_3_UG_amount), y = cryptic_fraction, fill = fa
 ggplot(df_4) + 
   geom_tile(aes(x = factor(Dox_Conc.), y = factor(UG_amount), fill = cryptic_fraction))
 ```
+
+### Does removing UGs closer to the canonical PAS affect cryptic PAS usage more?
+
+```{r}
+df_5 <- df_4 %>% 
+  filter(insert == "wild_type---10%_#1---0%_#1" | 
+           insert == "wild_type---10%_#2---10%_#2" | 
+           insert == "wild_type---10%_#3---10%_#3")
+
+ggplot(df_5, aes(insert, cryptic_fraction)) + 
+  geom_point(aes(colour = factor(replicate), shape = insert)) + 
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+df_6 <- df_4 %>% 
+  filter(insert == "wild_type---25%_#1---0%_#1" | 
+           insert == "wild_type---25%_#2---25%_#2" | 
+           insert == "wild_type---25%_#3---25%_#3")
+
+ggplot(df_6, aes(insert, cryptic_fraction)) + 
+  geom_point(aes(colour = factor(replicate), shape = insert)) + 
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+df_7 <- df_4 %>% 
+  filter(insert == "wild_type---50%_#1---50%_#1" | 
+           insert == "wild_type---50%_#2---50%_#2" | 
+           insert == "wild_type---50%_#3---50%_#3")
+
+ggplot(df_7, aes(insert, cryptic_fraction)) + 
+  geom_point(aes(colour = factor(replicate), shape = insert)) + 
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
