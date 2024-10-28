@@ -114,7 +114,7 @@ df_4 <- df_3 %>%
 ### Read query_name-barcode pairing table in
 
 ```{r read file}
-barcodes <- read_csv("/Users/jeanz/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/8_get each insert corresponding barcodes by Nanopore sequencing 10_P_1 library/barcodes.csv.gz") %>% 
+barcodes <- read_csv("/Volumes/lab-frattap/home/users/jeanz/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/8_get each insert corresponding barcodes by Nanopore sequencing 10_P_1 library/barcodes.csv.gz") %>% 
   dplyr::rename(qname = query_name) %>% 
   filter(!is.na(barcode))
 ```
@@ -179,5 +179,5 @@ Now I get a table shows corresponding barcodes of each insert, and how many read
 ### Export
 
 ```{r export as CSV file}
-write_csv(final, "~/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/8_get each insert corresponding barcodes by Nanopore sequencing 10_P_1 library/barcode_insert_library.csv.gz")
+write_csv(final, "/Volumes/lab-frattap/home/users/jeanz/GitHub/replace_UG_in_first_800_bp_of_ELK1_extended_3_prime_UTR/8_get each insert corresponding barcodes by Nanopore sequencing 10_P_1 library/barcode_insert_library.csv.gz")
 ```

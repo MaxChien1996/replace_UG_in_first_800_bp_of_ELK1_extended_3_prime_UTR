@@ -1,0 +1,196 @@
+---
+title: "final analysis"
+author: "Max Z. Y. J. Chien"
+date: "2024-10-28"
+output: html_document
+---
+
+```{r libraries}
+library(tidyverse)
+```
+
+## Load data in
+
+### Nanopore sequencing data
+
+```{r}
+for_final_analysis <- read_csv("../9_analyse results from minION with Flow Cell (R10.4.1)/for_final_analysis.csv.gz") %>% 
+  mutate(barcode = sub("_____.*", "", insert)) %>% 
+  mutate(insert = sub(".*_____", "", insert))
+```
+
+### oPools
+
+-   Each insert is assembled by three oPools: oPools_1, oPools_2, and oPools_3
+
+-   I labelled each insert like this "wild_type---0%\_#1---0%\_#1", each oPools separated by "---"
+
+-   both of "0%\_#1" and "10%\_25%\_#1" are wild type sequence, so manually change "10%\_25%\_#1" to "0%\_#1"
+
+-   "UG_amount" means how many UGs are in the insert sequence
+
+```{r}
+potential_combination_of_inserts <- read_csv("../6_potential combination after Gibson assembly/CSV_file_of_potential_combination_of_inserts.csv") %>% 
+  
+  mutate(insert = str_replace(insert, "10%_25%_#1", "0%_#1")) %>% 
+  
+  mutate(oPools_1 = word(insert, 1, sep='---')) %>% 
+  mutate(oPools_2 = word(insert, 2, sep='---')) %>% 
+  mutate(oPools_3 = word(insert, 3, sep='---')) %>% 
+  
+  mutate(oPools_1_Seq = paste0("CAAAAGACTCCTGGGCTCACCTGTTAGC", str_extract(sequence, paste0("(?<=", "CAAAAGACTCCTGGGCTCACCTGTTAGC", ").*?(?=", "TCCTGTAAATATATATTTTTCAAAGTGA", ")")), "TCCTGTAAATATATATTTTTCAAAGTGA")) %>% 
+  mutate(oPools_2_Seq = paste0("TCCTGTAAATATATATTTTTCAAAGTGA", str_extract(sequence, paste0("(?<=", "TCCTGTAAATATATATTTTTCAAAGTGA", ").*?(?=", "AAACAATAGTAGGGACTGCATATCGGTA", ")")), "AAACAATAGTAGGGACTGCATATCGGTA")) %>% 
+  mutate(oPools_3_Seq = paste0("AAACAATAGTAGGGACTGCATATCGGTA", str_extract(sequence, paste0("(?<=", "AAACAATAGTAGGGACTGCATATCGGTA", ").*?(?=", "ACGAGAAGGGAACGGGGACTGCAGCCCT", ")")), "ACGAGAAGGGAACGGGGACTGCAGCCCT")) %>% 
+  
+  mutate(oPools_1_UG_amount = str_count(oPools_1_Seq, "TG")) %>% 
+  mutate(oPools_2_UG_amount = str_count(oPools_2_Seq, "TG")) %>% 
+  mutate(oPools_3_UG_amount = str_count(oPools_3_Seq, "TG")) %>% 
+  
+  select(-sequence, -oPools_1_Seq, -oPools_2_Seq, -oPools_3_Seq)
+```
+
+## Start processing
+
+### Quality control
+
+check the read length
+
+```{r}
+df_1 <- for_final_analysis %>% 
+  filter(!is.na(PAS_in_reference)) %>% 
+  
+  # if it was using canonical PAS, the read must be between 1300 and 1550 bp long
+  # if it was using cryptic PAS, the read must be between 2350 and 2600 bp long
+  filter(read_length >= 1300 & read_length <= 2600) %>% 
+  filter(read_length <= 1550 | read_length >= 2350) %>% 
+  
+  group_by(insert, PAS_in_reference, contains_intron, barcode) %>% 
+  mutate(new_read_counts = sum(read_counts)) %>%
+  select(-read_length, -read_counts) %>% 
+  unique()
+```
+
+check reads contain introns
+
+```{r}
+intron_df <- for_final_analysis %>% 
+  group_by(insert, contains_intron) %>% 
+  mutate(total_reads = sum(read_counts)) %>% 
+  ungroup() %>% 
+  distinct(insert, contains_intron, total_reads) %>% 
+  pivot_wider(names_from = contains_intron, values_from = total_reads, values_fill = 0) %>% 
+  mutate(total = `TRUE` + `FALSE`) %>% 
+  mutate(intron_fraction = `TRUE` / total) %>% 
+  arrange(desc(intron_fraction))
+
+ggplot(intron_df) + 
+  geom_col(aes(insert, intron_fraction))
+
+inserts_with_intron <- intron_df %>% 
+  filter(intron_fraction > 0.10) %>% 
+  filter(total > 1000) %>% # read amount needs to be more than 1000
+  pull(insert)
+```
+
+### Determine the APA site
+
+```{r}
+df_2 <- df_1 %>% 
+  # get rid of those that contain introns
+  filter(contains_intron == FALSE) %>% 
+  filter(!insert %in% inserts_with_intron) %>% 
+  
+  mutate(APA_site = ifelse(PAS_in_reference > 2000, ifelse(PAS_in_reference < 2100, "canonical", "other"), "other")) %>% 
+  mutate(APA_site = ifelse(PAS_in_reference > 3025, ifelse(PAS_in_reference < 3125, "cryptic", APA_site), APA_site))
+```
+
+### Calculate the fraction of cryptic PAS usage
+
+```{r}
+df_3 <- df_2 %>% 
+  group_by(insert, barcode, APA_site) %>% 
+  mutate(counts = sum(new_read_counts)) %>% 
+  ungroup() %>% 
+  select(insert, barcode, APA_site, counts) %>% 
+  unique() %>% 
+  pivot_wider(names_from = APA_site, values_from = counts, values_fill = 0) %>% 
+  mutate(cryptic_fraction = cryptic / (canonical + cryptic + other)) %>% 
+  
+  # extra quliaty control, make sure each got at least more than 1 read
+  filter(canonical > 1 & cryptic > 1)
+```
+
+### Finalise the data frame
+
+```{r}
+df_4 <- df_3 %>% 
+  # turn barcode into the doxycycline (Dox) treatment group and replicate
+  mutate(barcode = as.numeric(str_replace(barcode, 'barcode', ''))) %>% 
+  mutate(Dox_Conc. = case_when(barcode %in% 1:3 ~ 1000,
+                         barcode %in% 4:6 ~ 60,
+                         barcode %in% 7:9 ~ 30,
+                         barcode %in% 10:12 ~ 0)) %>% 
+  mutate(replicate = barcode %% 3) %>% 
+  mutate(replicate = ifelse(replicate == 0, 3, replicate)) %>% 
+  select(-barcode) %>% 
+  
+  mutate(insert = str_replace(insert, "10%_25%_#1", "0%_#1")) %>% 
+  left_join(potential_combination_of_inserts, by = "insert")
+```
+
+## Make plots
+
+### Main
+
+-   When I designed oPools sequences, I forgot to add wild type sequence in oPools_2
+
+-   In order to avoid covariance, let's focus on the data which only involve wild type sequence in oPools_1 and oPools_3
+
+```{r}
+ggplot(df_4 %>% 
+         filter(oPools_1 == "wild_type") %>% 
+         filter(oPools_3 == "0%_#1"))+ 
+  geom_point(aes(x = factor(UG_amount), y = cryptic_fraction * 100, colour = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+    theme_classic() + 
+  xlab("UG amount") + 
+  ylab("Cryptic PAS usage (%)")
+```
+
+### Correlation to each oPools
+
+oPools_2
+
+```{r}
+ggplot(df_4, aes(x = factor(oPools_2_UG_amount), y = cryptic_fraction, fill = factor(replicate))) + 
+  geom_violin() + 
+  facet_wrap(~Dox_Conc.) + 
+  xlab("UG amount") + 
+  geom_point(aes(colour = factor(replicate)), position = position_dodge(width = 1), data = df_4 %>% filter(oPools_2_UG_amount == 27))
+```
+
+oPools_1
+
+```{r}
+ggplot(df_4, aes(x = factor(oPools_1_UG_amount), y = cryptic_fraction, fill = factor(replicate))) + 
+  geom_violin() + 
+  facet_wrap(~Dox_Conc.) + 
+  xlab("UG amount")
+```
+
+oPools_3
+
+```{r}
+ggplot(df_4, aes(x = factor(oPools_3_UG_amount), y = cryptic_fraction, fill = factor(replicate))) + 
+  geom_violin() + 
+  facet_wrap(~Dox_Conc.) + 
+  xlab("UG amount") + 
+  geom_point(aes(colour = factor(replicate)), position = position_dodge(width = 1), data = df_4 %>% filter(oPools_3_UG_amount == 30))
+```
+
+### Overlook
+
+```{r}
+ggplot(df_4) + 
+  geom_tile(aes(x = factor(Dox_Conc.), y = factor(UG_amount), fill = cryptic_fraction))
+```
