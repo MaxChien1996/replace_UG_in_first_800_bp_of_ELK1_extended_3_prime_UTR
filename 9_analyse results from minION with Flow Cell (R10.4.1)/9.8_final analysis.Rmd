@@ -23,11 +23,13 @@ for_final_analysis <- read_csv("../9_analyse results from minION with Flow Cell 
 
 -   Each insert is assembled by three oPools: oPools_1, oPools_2, and oPools_3
 
+-   "UG_amount" means how many UGs are in the insert sequence
+
 -   I labelled each insert like this "wild_type---0%\_#1---0%\_#1", each oPools separated by "---"
 
--   both of "0%\_#1" and "10%\_25%\_#1" are wild type sequence, so manually change "10%\_25%\_#1" to "0%\_#1"
+-   Both of "0%\_#1" and "10%\_25%\_#1" are wild type sequence, so manually change "10%\_25%\_#1" to "0%\_#1"
 
--   "UG_amount" means how many UGs are in the insert sequence
+-   Additionally, I also calculate the UG amount of "first 150 bp of cryptic 3 prime UTR"
 
 ```{r}
 potential_combination_of_inserts <- read_csv("../6_potential combination after Gibson assembly/CSV_file_of_potential_combination_of_inserts.csv") %>% 
@@ -42,11 +44,22 @@ potential_combination_of_inserts <- read_csv("../6_potential combination after G
   mutate(oPools_2_Seq = paste0("TCCTGTAAATATATATTTTTCAAAGTGA", str_extract(sequence, paste0("(?<=", "TCCTGTAAATATATATTTTTCAAAGTGA", ").*?(?=", "AAACAATAGTAGGGACTGCATATCGGTA", ")")), "AAACAATAGTAGGGACTGCATATCGGTA")) %>% 
   mutate(oPools_3_Seq = paste0("AAACAATAGTAGGGACTGCATATCGGTA", str_extract(sequence, paste0("(?<=", "AAACAATAGTAGGGACTGCATATCGGTA", ").*?(?=", "ACGAGAAGGGAACGGGGACTGCAGCCCT", ")")), "ACGAGAAGGGAACGGGGACTGCAGCCCT")) %>% 
   
+  mutate(first_150_bp_of_cryptic_3_prime_UTR = paste0(str_extract(sequence, paste0("(?<=", "TCCTGTAAATATATATTTTTCAAAGTGA", ").*?(?=", "AAACAATAGTAGGGACTGCATATCGGTA", ")")), "AAACAATAGTAGGGACTGCATA")) %>% 
+  
   mutate(oPools_1_UG_amount = str_count(oPools_1_Seq, "TG")) %>% 
   mutate(oPools_2_UG_amount = str_count(oPools_2_Seq, "TG")) %>% 
   mutate(oPools_3_UG_amount = str_count(oPools_3_Seq, "TG")) %>% 
+  mutate(first_150_bp_of_cryptic_3_prime_UTR_UG_amount = str_count(first_150_bp_of_cryptic_3_prime_UTR, "TG")) %>% 
   
-  select(-sequence, -oPools_1_Seq, -oPools_2_Seq, -oPools_3_Seq)
+  select(-sequence, -oPools_1_Seq, -oPools_2_Seq, -oPools_3_Seq, -first_150_bp_of_cryptic_3_prime_UTR) %>% 
+  
+  # re-label to make everything clear
+    # I know it's confusing
+    # when I was designing the sequences, 200% meant that I put more UG into the sequence instead of removing it
+    # at the end, total amount of UG in 200% is two times of wild type, soo it's 100% more than wild type
+    # let's change it to +100%
+  mutate(oPools_2 = ifelse(str_detect(oPools_2, "200%"), "+100%_1", paste0("-", oPools_2))) %>% 
+  mutate(oPools_3 = ifelse(str_detect(oPools_3, "200%"), "+100%_1", paste0("-", oPools_3)))
 ```
 
 ## Start processing
@@ -116,7 +129,7 @@ df_3 <- df_2 %>%
   pivot_wider(names_from = APA_site, values_from = counts, values_fill = 0) %>% 
   mutate(cryptic_fraction = cryptic / (canonical + cryptic + other)) %>% 
   
-  # extra quliaty control, make sure each got at least more than 1 read
+  # extra quality control, make sure each got at least more than 1 read
   filter(canonical > 1 & cryptic > 1)
 ```
 
@@ -140,21 +153,38 @@ df_4 <- df_3 %>%
 
 ## Make plots
 
-### Main
+### Main (for the paper publication)
 
 -   When I designed oPools sequences, I forgot to add wild type sequence in oPools_2
 
--   In order to avoid covariance, let's focus on the data which only involve wild type sequence in oPools_1 and oPools_3
+-   In order to avoid **covariance**, let's focus on the data which only involve wild type sequence in oPools_1 and oPools_3
+
+-   This means that the data, which we are going to plot, only has UG amount change in oPools_2
+
+-   Moreover, the first 28 bp of oPools_2 is overlapping with oPools_1, which is also in the canonical 3'-UTR (detailed illustration: <https://www.dropbox.com/scl/fi/ia0amwbsreujzjil4wp39/assign-the-insert-sequence.dna?rlkey=y50x3pl4pl3nacwsh2giu75tb&dl=0>)
+
+-   So we can claim that "we changed the UG amount in the first 150 bp of the cryptic 3'-UTR"
+
+-   The wild type sequence of "first 150 bp of the cryptic 3'-UTR" has 25 UGs
+
+-   The analysis will looks like:
 
 ```{r}
 ggplot(df_4 %>% 
          filter(oPools_1 == "wild_type") %>% 
-         filter(oPools_3 == "0%_#1"))+ 
-  geom_point(aes(x = factor(UG_amount), y = cryptic_fraction * 100, colour = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+         filter(oPools_3 == "-0%_#1")) + 
+  
+  geom_point(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = cryptic_fraction * 100, colour = insert, shape = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  guides(colour = "none") + # this hides the legend for 'shape'
+  labs(shape = "replicates") + 
+  
   facet_wrap(~Dox_Conc., nrow = 1) + 
     theme_classic() + 
-  xlab("UG amount") + 
-  ylab("Cryptic PAS usage (%)")
+  xlab("change of UG amount (%)") + 
+  ylab("cryptic PAS usage (%)") + 
+  annotate("segment", x = 8, xend = 8, y = 0, yend = max(df_4$cryptic_fraction) * 100, linetype = "dashed", color = "black", alpha = 0.6) + 
+  # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
+  theme(text = element_text(size = 15))
 ```
 
 ### Correlation to each oPools
