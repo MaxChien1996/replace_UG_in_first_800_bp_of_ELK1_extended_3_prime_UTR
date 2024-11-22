@@ -169,7 +169,7 @@ df_4 <- df_3 %>%
 
 -   The analysis will looks like:
 
-```{r}
+```{r version 1.0}
 ggplot(df_4 %>% 
          filter(oPools_1 == "wild_type") %>% 
          filter(oPools_3 == "-0%_#1")) + 
@@ -180,9 +180,63 @@ ggplot(df_4 %>%
   
   facet_wrap(~Dox_Conc., nrow = 1) + 
     theme_classic() + 
-  xlab("change of UG amount (%)") + 
+  xlab("change of UG dinucleotide content (%)") + 
   ylab("cryptic PAS usage (%)") + 
   annotate("segment", x = 8, xend = 8, y = 0, yend = max(df_4$cryptic_fraction) * 100, linetype = "dashed", color = "black", alpha = 0.6) + 
+  # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
+  theme(text = element_text(size = 15))
+```
+
+```{r version 2.0}
+ggplot(df_4 %>% 
+         filter(oPools_1 == "wild_type") %>% 
+         filter(oPools_3 == "-0%_#1") %>% 
+         
+         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc.) %>% 
+         mutate(average_cryptic_fraction = mean(cryptic_fraction)) %>% 
+         ungroup()) + 
+  geom_col(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = average_cryptic_fraction * 100), fill = "lightgray", position = position_dodge(width = 0.5), alpha = 1) + 
+  geom_point(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = cryptic_fraction * 100, colour = insert, shape = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+  guides(colour = "none") + # this hides the legend for 'shape'
+  labs(shape = "replicates") + 
+  theme_classic() + 
+  xlab("change of UG dinucleotide content (%)") + 
+  ylab("cryptic PAS usage (%)") + 
+  annotate("segment", x = 0, xend = 10, y = 42.82674, yend = 42.82674, linetype = "dashed", color = "black", alpha = 0.6) + 
+  # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
+  theme(text = element_text(size = 15))
+```
+
+```{r version 2.1}
+varients_number <- df_4 %>% 
+  filter(oPools_1 == "wild_type") %>% 
+  filter(oPools_3 == "-0%_#1") %>% 
+  select(insert, first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc.) %>% 
+  distinct() %>% 
+  group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc.) %>% 
+  mutate(variants = 1:n()) %>% 
+  mutate(variants = paste0("#", variants))
+
+ggplot(df_4 %>% 
+         filter(oPools_1 == "wild_type") %>% 
+         filter(oPools_3 == "-0%_#1") %>% 
+         
+         left_join(varients_number) %>% 
+         mutate(variants = as.character(variants)) %>% 
+         
+         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc., insert) %>% 
+         mutate(average_cryptic_fraction = mean(cryptic_fraction)) %>% 
+         ungroup()) + 
+  geom_col(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = average_cryptic_fraction * 100), fill = "lightgray", position = position_dodge(width = 0.5), alpha = 1) + 
+  geom_point(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = cryptic_fraction * 100, colour = variants, shape = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+  #guides(colour = "none") + # this hides the legend for 'shape'
+  labs(shape = "replicates") + 
+  theme_classic() + 
+  xlab("change of UG dinucleotide content (%)") + 
+  ylab("cryptic PAS usage (%)") + 
+  annotate("segment", x = 0, xend = 10, y = 42.82674, yend = 42.82674, linetype = "dashed", color = "black", alpha = 0.6) + 
   # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
   theme(text = element_text(size = 15))
 ```
