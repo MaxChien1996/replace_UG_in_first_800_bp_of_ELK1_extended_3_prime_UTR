@@ -225,11 +225,12 @@ ggplot(df_4 %>%
          left_join(varients_number) %>% 
          mutate(variants = as.character(variants)) %>% 
          
-         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc., insert) %>% 
+         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc.) %>% 
          mutate(average_cryptic_fraction = mean(cryptic_fraction)) %>% 
          ungroup()) + 
   geom_col(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = average_cryptic_fraction * 100), fill = "lightgray", position = position_dodge(width = 0.5), alpha = 1) + 
   geom_point(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = cryptic_fraction * 100, colour = variants, shape = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  scale_colour_brewer(palette = "Set1", direction = -1) + # this changes the color of the geom_point, and "Set1" is partially colorblind-friendly
   facet_wrap(~Dox_Conc., nrow = 1) + 
   #guides(colour = "none") + # this hides the legend for 'shape'
   labs(shape = "replicates") + 
@@ -239,6 +240,107 @@ ggplot(df_4 %>%
   annotate("segment", x = 0, xend = 10, y = 42.82674, yend = 42.82674, linetype = "dashed", color = "black", alpha = 0.6) + 
   # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
   theme(text = element_text(size = 15))
+
+# export as PDF file with width = 17.84 and height = 4.60 inches
+
+```
+
+```{r version 2.2}
+ggplot(df_4 %>% 
+         filter(oPools_1 == "wild_type") %>% 
+         filter(oPools_3 == "-0%_#1") %>% 
+         
+         left_join(varients_number) %>% 
+         mutate(variants = as.character(variants)) %>% 
+         
+         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc.) %>% 
+         mutate(average_cryptic_fraction = mean(cryptic_fraction)) %>% 
+         ungroup() %>% 
+         
+         filter(Dox_Conc. == 0) %>% 
+         mutate(Dox_Conc. = ifelse(Dox_Conc. == 0, "0 \n(CTRL)", Dox_Conc.))) + 
+  geom_col(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = average_cryptic_fraction * 100), fill = "lightgray", position = position_dodge(width = 0.5), alpha = 1) + 
+  geom_point(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = cryptic_fraction * 100, colour = variants, shape = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  scale_colour_brewer(palette = "Set1", direction = -1) + # this changes the color of the geom_point, and "Set1" is partially colorblind-friendly
+  #guides(colour = "none") + # this hides the legend for 'shape'
+  labs(shape = "replicates") + 
+  theme_classic() + 
+  xlab("change of UG dinucleotide content (%)") + 
+  ylab("cryptic PAS usage (%)") + 
+  annotate("segment", x = 0, xend = 10, y = 42.82674, yend = 42.82674, linetype = "dashed", color = "black", alpha = 0.6) + 
+  # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
+  theme(text = element_text(size = 15)) + 
+  facet_wrap(~Dox_Conc., nrow = 1)
+
+# export as PDF file with width = 5.67 and height = 5.20 inches
+```
+
+```{r version 3.0}
+ggplot(df_4 %>% 
+         filter(oPools_1 == "wild_type") %>% 
+         filter(oPools_3 == "-0%_#1") %>% 
+         
+         left_join(varients_number) %>% 
+         mutate(variants = as.character(variants)) %>% 
+         
+         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc.) %>% 
+         mutate(average_cryptic_fraction = mean(cryptic_fraction)) %>% 
+         ungroup() %>% 
+         
+         filter(Dox_Conc. == 0 | Dox_Conc. == 1000) %>% 
+         mutate(Dox_Conc. = factor(case_when(Dox_Conc. == 0 ~ "0 \n(CTRL)", 
+                                             Dox_Conc. == 1000 ~ "1000 \n(maximum TDP-43 KD)"), 
+                                   levels = c("0 \n(CTRL)", 
+                                              "1000 \n(maximum TDP-43 KD)"))) %>%
+         filter(first_150_bp_of_cryptic_3_prime_UTR_UG_amount == 1 | first_150_bp_of_cryptic_3_prime_UTR_UG_amount == 25 | first_150_bp_of_cryptic_3_prime_UTR_UG_amount == 48)) + 
+  geom_col(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = average_cryptic_fraction * 100), fill = "lightgray", position = position_dodge(width = 0.5), alpha = 1) + 
+  geom_point(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = cryptic_fraction * 100, colour = variants, shape = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  scale_colour_brewer(palette = "Set1", direction = -1) + # this changes the color of the geom_point, and "Set1" is partially colorblind-friendly
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+  #guides(colour = "none") + # this hides the legend for 'shape'
+  labs(shape = "replicates") + 
+  theme_classic() + 
+  annotate("segment", x = 0.5, xend = 3.6, y = 42.82674, yend = 42.82674, linetype = "dashed", color = "black", alpha = 0.6) + 
+  # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
+  xlab("change of UG dinucleotide content (%)") + 
+  ylab("cryptic PAS usage (%)") + 
+  theme(text = element_text(size = 15))
+
+# export as PDF file with width = 5.67 and height = 5.20 inches
+
+```
+
+```{r version 4.0}
+ggplot(df_4 %>% 
+         filter(oPools_1 == "wild_type") %>% 
+         filter(oPools_3 == "-0%_#1") %>% 
+         
+         left_join(varients_number) %>% 
+         mutate(variants = as.character(variants)) %>% 
+         
+         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount, Dox_Conc.) %>% 
+         mutate(average_cryptic_fraction = mean(cryptic_fraction)) %>% 
+         ungroup() %>% 
+         
+         group_by(first_150_bp_of_cryptic_3_prime_UTR_UG_amount) %>%
+         mutate(DoxConc.0_average_cryptic_fraction = max(ifelse(Dox_Conc. == 0, average_cryptic_fraction, -1000000))) %>%
+         mutate(normalised_average_cryptic_fraction = average_cryptic_fraction/ DoxConc.0_average_cryptic_fraction) %>% 
+         mutate(normalised_individual_cryptic_fraction = cryptic_fraction/ DoxConc.0_average_cryptic_fraction) %>% 
+         ungroup()) + 
+  geom_col(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = normalised_average_cryptic_fraction), fill = "lightgray", position = position_dodge(width = 0.5), alpha = 1) + 
+  geom_point(aes(x = factor(round((first_150_bp_of_cryptic_3_prime_UTR_UG_amount) / 25, 2) * 100 - 100), y = normalised_individual_cryptic_fraction, colour = variants, shape = factor(replicate)), position = position_dodge(width = 0.5), alpha = 0.75) + 
+  scale_colour_brewer(palette = "Set1", direction = -1) + # this changes the color of the geom_point, and "Set1" is partially colorblind-friendly
+  facet_wrap(~Dox_Conc., nrow = 1) + 
+  #guides(colour = "none") + # this hides the legend for 'shape'
+  labs(shape = "replicates") + 
+  theme_classic() + 
+  xlab("change of UG dinucleotide content (%)") + 
+  ylab("fold increase of cryptic PAS usage \nrelative to 0 ng/mL doxycycline") + 
+  annotate("segment", x = 0, xend = 10, y = 1, yend = 1, linetype = "dashed", color = "black", alpha = 0.35) + 
+  # the "segment" keyword tells ggplot2 to draw a straight line between two specified points
+  theme(text = element_text(size = 15))
+
+# export as PDF file with width = 17.84 and height = 4.90 inches
 ```
 
 ### Correlation to each oPools
